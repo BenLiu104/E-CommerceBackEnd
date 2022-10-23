@@ -1,22 +1,38 @@
-const router = require('express').Router();
-const { Product, Category, Tag, ProductTag } = require('../../models');
+const router = require("express").Router();
+const { Product, Category, Tag, ProductTag } = require("../../models");
 
 // The `/api/products` endpoint
 
 // get all products
-router.get('/', (req, res) => {
+router.get("/", async (req, res) => {
   // find all products
   // be sure to include its associated Category and Tag data
+  try {
+    const dataList = await Product.findAll({
+      include: [Category, { model: Tag, through: ProductTag }],
+    });
+    res.status(200).json(dataList);
+  } catch (error) {
+    res.status(500).json(error);
+  }
 });
 
 // get one product
-router.get('/:id', (req, res) => {
+router.get("/:id", async (req, res) => {
   // find a single product by its `id`
   // be sure to include its associated Category and Tag data
+  try {
+    const data = await Product.findByPk(req.params.id, {
+      include: [Category, { model: Tag, through: ProductTag }],
+    });
+    data ? res.json(data) : res.status(404).json("No such ID");
+  } catch (error) {
+    res.status(500).json(error);
+  }
 });
 
 // create new product
-router.post('/', (req, res) => {
+router.post("/", (req, res) => {
   /* req.body should look like this...
     {
       product_name: "Basketball",
@@ -48,7 +64,7 @@ router.post('/', (req, res) => {
 });
 
 // update product
-router.put('/:id', (req, res) => {
+router.put("/:id", (req, res) => {
   // update product data
   Product.update(req.body, {
     where: {
@@ -62,7 +78,7 @@ router.put('/:id', (req, res) => {
     .then((productTags) => {
       // get list of current tag_ids
       const productTagIds = productTags.map(({ tag_id }) => tag_id);
-      // create filtered list of new tag_ids
+      // create filtered list of new tag_ids // ori 1,2,3,4   new 1,2,5
       const newProductTags = req.body.tagIds
         .filter((tag_id) => !productTagIds.includes(tag_id))
         .map((tag_id) => {
@@ -89,8 +105,23 @@ router.put('/:id', (req, res) => {
     });
 });
 
-router.delete('/:id', (req, res) => {
+router.delete("/:id", async (req, res) => {
   // delete one product by its `id` value
+  try {
+    const affected = await Product.destroy({
+      where: {
+        id: req.params.id,
+      },
+    });
+
+    if (affected) {
+      res.status(200).json(`${affected} product has been deleted successfully`);
+    } else {
+      res.status(404).json("No such product id / invalid input");
+    }
+  } catch (error) {
+    res.status(500).json(error);
+  }
 });
 
 module.exports = router;
